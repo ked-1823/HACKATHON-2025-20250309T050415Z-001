@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - The Delicious Hub</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+            width: 90%;
+        }
+        .container-wrapper {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 30%;
+        }
+        .menu-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px;
+            width: 200px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+        }
+        .delete-btn {
+            background: red;
+            color: white;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Admin Panel - Manage Menu</h1>
+
+        <h3>Add a New Menu Item</h3>
+        <input type="text" id="item-name" placeholder="Item Name">
+        <input type="number" id="item-price" placeholder="Price">
+        <button id="add-menu-btn">Add to Menu</button>
+
+        <h3>Add a Special Item</h3>
+        <input type="text" id="special-name" placeholder="Special Item Name">
+        <input type="number" id="special-price" placeholder="Price">
+        <button id="add-special-btn">Add to Specials</button>
+
+        <h3>Add to Most Sold Today</h3>
+        <input type="text" id="most-sold-name" placeholder="Item Name">
+        <input type="number" id="most-sold-price" placeholder="Price">
+        <input type="number" id="most-sold-count" placeholder="Sold Count">
+        <button id="add-most-sold-btn">Add to Most Sold</button>
+    </div>
+
+    <!-- Section Wrapper for Horizontal Alignment -->
+    <div class="container-wrapper">
+        <div>
+            <h3>Today's Specials</h3>
+            <div id="specials-list" class="list-container"></div>
+        </div>
+
+        <div>
+            <h3>Menu List</h3>
+            <div id="menu-list" class="list-container"></div>
+        </div>
+
+        <div>
+            <h3>Most Sold Today</h3>
+            <div id="most-sold-list" class="list-container"></div>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCht7ZJ5csZg6Y_YtGtNORN0x25JOGCNEE",
+            authDomain: "the-delicious-hub.firebaseapp.com",
+            projectId: "the-delicious-hub",
+            storageBucket: "the-delicious-hub.appspot.com",
+            messagingSenderId: "1073723518081",
+            appId: "1:1073723518081:web:12102f7739638d6491b180"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Add Menu Item
+        document.getElementById('add-menu-btn').addEventListener('click', async () => {
+            const itemName = document.getElementById('item-name').value;
+            const itemPrice = document.getElementById('item-price').value;
+
+            if (!itemName || !itemPrice) {
+                alert('Please fill all fields');
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "menu"), {
+                    name: itemName,
+                    price: parseFloat(itemPrice)
+                });
+
+                alert("Menu item added!");
+                loadItems("menu", "menu-list");
+            } catch (error) {
+                console.error("Error adding menu item:", error);
+                alert("Error adding menu item.");
+            }
+        });
+
+        // Add Special Item
+        document.getElementById('add-special-btn').addEventListener('click', async () => {
+            const specialName = document.getElementById('special-name').value;
+            const specialPrice = document.getElementById('special-price').value;
+
+            if (!specialName || !specialPrice) {
+                alert('Please fill all fields');
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "specials"), {
+                    name: specialName,
+                    price: parseFloat(specialPrice)
+                });
+
+                alert("Special item added!");
+                loadItems("specials", "specials-list");
+            } catch (error) {
+                console.error("Error adding special item:", error);
+                alert("Error adding special item.");
+            }
+        });
+
+        // Add Most Sold Item
+        document.getElementById('add-most-sold-btn').addEventListener('click', async () => {
+            const mostSoldName = document.getElementById('most-sold-name').value;
+            const mostSoldPrice = document.getElementById('most-sold-price').value;
+            const mostSoldCount = document.getElementById('most-sold-count').value;
+
+            if (!mostSoldName || !mostSoldPrice || !mostSoldCount) {
+                alert('Please fill all fields');
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "most_sold"), {
+                    name: mostSoldName,
+                    price: parseFloat(mostSoldPrice),
+                    soldCount: parseInt(mostSoldCount)
+                });
+
+                alert("Most sold item added!");
+                loadItems("most_sold", "most-sold-list");
+            } catch (error) {
+                console.error("Error adding most sold item:", error);
+                alert("Error adding most sold item.");
+            }
+        });
+
+        // Load Items Function
+        async function loadItems(collectionName, elementId) {
+            const listElement = document.getElementById(elementId);
+            listElement.innerHTML = '';
+
+            try {
+                const snapshot = await getDocs(collection(db, collectionName));
+                snapshot.forEach(docSnap => {
+                    const item = docSnap.data();
+                    const menuItem = document.createElement('div');
+                    menuItem.className = 'menu-item';
+                    menuItem.innerHTML = `
+                        <h3>${item.name}</h3>
+                        <p>₹${item.price}</p>
+                        ${collectionName === "most_sold" ? `<p>🔥 Sold: ${item.soldCount} times</p>` : ""}
+                        <button class="delete-btn" onclick="deleteItem('${collectionName}', '${docSnap.id}')">Delete</button>
+                    `;
+                    listElement.appendChild(menuItem);
+                });
+            } catch (error) {
+                console.error(`Error loading ${collectionName} items:`, error);
+            }
+        }
+
+        window.onload = () => {
+            loadItems("menu", "menu-list");
+            loadItems("specials", "specials-list");
+            loadItems("most_sold", "most-sold-list");
+        };
+    </script>
+
+</body>
+</html>
